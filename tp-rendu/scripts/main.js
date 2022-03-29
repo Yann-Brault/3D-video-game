@@ -23,7 +23,6 @@ function startGame() {
 
 function createScene() {
   let scene = new BABYLON.Scene(engine);
-
   let gravityVector = new BABYLON.Vector3(0, -9.81, 0);
   let physicsPlugin = new BABYLON.CannonJSPlugin();
 
@@ -32,14 +31,59 @@ function createScene() {
   let ground = createGround(scene);
   let box = createBox(scene);
   let pad = createJumpPad(scene);
-
+  pad.position = new BABYLON.Vector3 (10, 2, -10);
+  let pad2 = createJumpPad(scene);
+  pad2.position = new BABYLON.Vector3(10, 2, 10);
+  let pad3 = createJumpPad(scene);
+  pad3.position = new BABYLON.Vector3(-10, 2, 10);
+  let pad4 = createJumpPad(scene);
+  pad4.position = new  BABYLON.Vector3(-10, 2, -10);
   let ball = createBall(scene);
-
-  scene.activeCamera = createFollowCamera(scene);
-  //scene.activeCamera = freeCamera;
-
-
   createLights(scene);
+  scene.activeCamera = createCamera(scene);
+
+  ball.actionManager = new BABYLON.ActionManager(scene);
+
+  ball.actionManager.registerAction(new BABYLON.SetValueAction(
+      { trigger: BABYLON.ActionManager.OnIntersectionEnterTrigger, parameter: pad },
+      ball, "scaling", new BABYLON.Vector3(1.5, 1.5, 1.5)));
+  ball.actionManager.registerAction(new BABYLON.SetValueAction(
+      { trigger: BABYLON.ActionManager.OnIntersectionExitTrigger, parameter: pad },
+      ball, "scaling", new BABYLON.Vector3(1, 1, 1)));
+
+  ball.actionManager.registerAction(new BABYLON.SetValueAction(
+      {trigger: BABYLON.ActionManager.OnIntersectionEnterTrigger, parameter: pad2},
+      ball.material, "diffuseColor",  BABYLON.Color3.White()));
+  ball.actionManager.registerAction(new BABYLON.SetValueAction(
+      {trigger: BABYLON.ActionManager.OnIntersectionExitTrigger, parameter: pad2},
+      ball.material, "diffuseColor",  ball.material.diffuseColor));
+
+  ball.actionManager.registerAction(new BABYLON.ExecuteCodeAction(
+      {trigger: BABYLON.ActionManager.OnIntersectionEnterTrigger, parameter: pad3},
+      () => {
+        console.log("function")
+        ball.physicsImpostor.applyImpulse(
+            new BABYLON.Vector3(2, 10, 2),
+            ball.getAbsolutePosition()
+        );
+      }
+  ));
+
+  ball.actionManager.registerAction(new BABYLON.SetValueAction(
+      { trigger: BABYLON.ActionManager.OnIntersectionEnterTrigger, parameter: pad4},
+      pad4, "scaling", new BABYLON.Vector3(0.5, 0.5, 0.5)
+  ));
+
+  ball.actionManager.registerAction(new BABYLON.SetValueAction(
+      { trigger: BABYLON.ActionManager.OnIntersectionExitTrigger, parameter: pad4},
+      pad4.material, "diffuseColor", BABYLON.Color3.Random()
+  ));
+
+  ball.actionManager.registerAction((new BABYLON.PlaySoundAction(
+      {trigger: BABYLON.ActionManager.OnIntersectionEnterTrigger, parameter: box},
+      new BABYLON.Sound("explosion", "sounds/explosion.mp3", scene)
+  )));
+
 
   return scene;
 }
@@ -72,9 +116,9 @@ function createLights(scene) {
   light.intensity = 0.7;
 }
 
-function createFollowCamera(scene) {
+function createCamera(scene) {
   let camera = new BABYLON.ArcRotateCamera(
-      "playerFollowCamera",
+      "Camera",
       BABYLON.Tools.ToRadians(-90),
       BABYLON.Tools.ToRadians(20),
       70,
@@ -82,11 +126,13 @@ function createFollowCamera(scene) {
       scene
   );
 
-  camera.attachControl(canvas, true);
+  camera.attachControl(canvas,true);
   camera.panningAxis = new BABYLON.Vector3(0, 0, 0);
-  camera.lockedTarget = scene.getMeshByName("PlayerSphere");
   camera.cameraAcceleration = 0.1; // how fast to move
   camera.maxCameraSpeed = 5; // speed limit
+  camera.lowerBetaLimit = 0.1;
+  camera.upperBetaLimit = (Math.PI / 2) * 0.99;
+  camera.lowerRadiusLimit = 15;
 
   return camera;
 }
@@ -138,14 +184,6 @@ function createBall(scene) {
     );
   };
 
-
-  //ball.physicsImpostor.applyImpulse(
-  //    new BABYLON.Vector3(0, 1, 0),
-  //    ball.getAbsolutePosition()
-  //);
-
-
-
   return ball;
 }
 
@@ -154,7 +192,6 @@ function createBox(scene) {
   let boxMaterial = new BABYLON.StandardMaterial("boxMaterial", scene);
   boxMaterial.diffuseColor = new BABYLON.Color3.Blue();
   box.material = boxMaterial;
-
   box.position.y = 4;
 
   box.physicsImpostor = new BABYLON.PhysicsImpostor(
@@ -173,9 +210,6 @@ function createJumpPad(scene) {
   padMaterial.diffuseColor = new BABYLON.Color3.Green();
   pad.material = padMaterial;
 
-  pad.position.y = 2;
-  pad.position.x = 6;
-
   pad.physicsImpostor = new BABYLON.PhysicsImpostor(
       pad,
       BABYLON.PhysicsImpostor.BoxImpostor,
@@ -191,26 +225,6 @@ window.addEventListener("resize", () => {
 });
 
 function modifySettings() {
-  //as soon as we click on the game window, the mouse pointer is "locked"
-  //you will have to press ESC to unlock it
-  /*scene.onPointerDown = () => {
-    if (!scene.alreadyLocked) {
-      console.log("requesting pointer lock");
-      canvas.requestPointerLock();
-    } else {
-      console.log("Pointer already locked");
-    }
-  };
-
-  document.addEventListener("pointerlockchange", () => {
-    let element = document.pointerLockElement || null;
-    if (element) {
-      // lets create a custom attribute
-      scene.alreadyLocked = true;
-    } else {
-      scene.alreadyLocked = false;
-    }
-  });*/
 
   // key listeners for the tank
   inputStates.left = false;
